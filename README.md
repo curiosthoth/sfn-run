@@ -7,5 +7,5 @@ along with the log (if logGroup name is given).
 Usage
 
 ```shell
-./sfn-run <state-machine-arn> <log-group-name> <timeout-in-seconds> <allow-multiple>
+./sfn-run <state-machine-arn> <log-group-name> <timeout-in-seconds> <allow-multiple> [input-string]
 ```

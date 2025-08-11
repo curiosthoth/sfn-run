@@ -73,9 +73,10 @@ func checkAndWaitForRunningExecution(svc *sfn.Client, stateMachineArn *string,
 	return Ok
 }
 
-func startStateMachineSync(svc *sfn.Client, stateMachineArn *string) string {
+func startStateMachineSync(svc *sfn.Client, stateMachineArn *string, input *string) string {
 	output, err := svc.StartExecution(context.TODO(), &sfn.StartExecutionInput{
 		StateMachineArn: stateMachineArn,
+		Input:           input,
 	})
 	if err != nil {
 		log.Fatalf("%v\n", err)
@@ -259,9 +260,9 @@ func main() {
 	}
 
 	args := os.Args
-	if len(args) != 5 {
+	if len(args) < 5 {
 		log.Fatalf("Wrong number of arguments. Should be: \n" +
-			"./sfn-run <state-machine-arn> <log-group-name> <timeout-in-seconds> <allow-multiple>")
+			"./sfn-run <state-machine-arn> <log-group-name> <timeout-in-seconds> <allow-multiple> [input-string]")
 	}
 
 	stateMachineArn := strings.TrimSpace(args[1])
@@ -277,6 +278,18 @@ func main() {
 		log.Fatalf("Timeout value must be equal or greater than 15 seconds")
 	}
 	allowMulti := strings.ToLower(strings.TrimSpace(args[4]))
+
+	var input *string
+	if len(args) > 5 {
+		// We have an input string
+		input = aws.String(strings.TrimSpace(args[5]))
+		if len(*input) == 0 {
+			log.Fatal("Input string cannot be empty")
+		}
+		log.Infof("Input: %s", *input)
+	} else {
+		log.Info("No input string provided, using NULL input.")
+	}
 
 	svc := sfn.NewFromConfig(cfg)
 
@@ -300,7 +313,7 @@ func main() {
 		log.Infof("We are not checking for existing executions. Make sure the job is reentrant.")
 	}
 
-	executionArn := startStateMachineSync(svc, &stateMachineArn)
+	executionArn := startStateMachineSync(svc, &stateMachineArn, input)
 	log.Infof("State Machine %s started. Timeout= %d seconds", stateMachineArn, timeoutSeconds)
 	status, stepOutput := waitForExecution(svc, executionArn, timeoutSeconds, 15)
 	if stepOutput != nil {
